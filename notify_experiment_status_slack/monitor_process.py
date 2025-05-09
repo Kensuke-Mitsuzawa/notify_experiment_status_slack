@@ -28,9 +28,9 @@ def message_start(webhook, process_id: int, user_name: str = None, label: str = 
         raise Exception()
 
 
-def message_monitor(webhook, process_id: int, user_name: str = None, label: str = None):
+def message_monitor(webhook, process_id: int, user_name: str = None, label: str = None, p_name: str = None):
     is_process_exist = psutil.pid_exists(process_id)
-    
+
     if is_process_exist:
         p_obj = psutil.Process(pid=process_id)
         with p_obj.oneshot():
@@ -42,10 +42,10 @@ def message_monitor(webhook, process_id: int, user_name: str = None, label: str 
         response = webhook.send(text=message)
         assert response.status_code == 200
         assert response.body == "ok"
-        return True
+        return True, p_name
     else:
         user_name_code = '' if user_name is None else f'@{user_name} '
-        message = user_name_code + f'[END] it has gone. p_name={is_process_exist} process_name={p_name}'
+        message = user_name_code + f'[END] it has gone. process_name={process_id} process_name={p_name} label={label}'
         logger.error(message)
         response = webhook.send(text=message)
         assert response.status_code == 200
@@ -77,10 +77,12 @@ def main():
     
     webhook = WebhookClient(URL_WEBHOOK)
     message_start(webhook, args.process_id, args.user_name, args.label)
+    _process_name = ''
     while True:
         sleep(args.monitor_interval * 60)
-        message_monitor(webhook, args.process_id, args.user_name, args.label)
+        _is_status, _process_name = message_monitor(webhook, args.process_id, args.user_name, args.label, _process_name)
         
 
 if __name__ == '__main__':
     main()
+
